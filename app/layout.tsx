@@ -29,9 +29,9 @@ export default function RootLayout({
           
           {/* Main content area with padding-top to avoid the Navbar */}
           <main className="pt-28 px-4 md:px-8">
-            <PageTransitionWrapper>
+
               {children}
-            </PageTransitionWrapper>
+
           </main>
         </Providers>
       </body>

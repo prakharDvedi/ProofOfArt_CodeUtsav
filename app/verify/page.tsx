@@ -5,7 +5,35 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useSearchParams } from 'next/navigation'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { format } from 'date-fns'
-import Image from 'next/image' // <-- Import Image component
+import Image from 'next/image'
+
+// --- Animation Variants ---
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+      when: "beforeChildren"
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.5, ease: 'easeOut' }
+  },
+  exit: {
+    opacity: 0,
+    y: -20,
+    scale: 0.95,
+    transition: { duration: 0.2, ease: 'easeIn' }
+  }
+}
 
 // Define the shape of the data we expect from verification
 type VerifiedProof = {
@@ -20,12 +48,9 @@ type VerifiedProof = {
 const mockFetchProof = (hash: string): Promise<VerifiedProof> => {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      // Simulate a "Not Found" error for any hash except our mock one
       if (hash !== '0x' + 'b'.repeat(64)) {
         reject(new Error('Proof not found. The hash is invalid or not registered.'))
       }
-
-      // Simulate a successful lookup
       resolve({
         creatorAddress: '0x1234...5678',
         timestamp: new Date('2025-10-30T14:30:00Z').getTime(),
@@ -90,7 +115,7 @@ export default function VerifyPage() {
       if (file.type.startsWith('image/')) {
         setUploadedImageFile(file)
         setUploadedImagePreview(URL.createObjectURL(file))
-        setHashInput('') // Clear hash input
+        setHashInput('')
         setError(null)
       } else {
         setError('Please upload a valid image file.')
@@ -106,7 +131,7 @@ export default function VerifyPage() {
     if (file && file.type.startsWith('image/')) {
       setUploadedImageFile(file)
       setUploadedImagePreview(URL.createObjectURL(file))
-      setHashInput('') // Clear hash input
+      setHashInput('')
       setError(null)
     } else {
       setError('Please drop a valid image file.')
@@ -118,25 +143,16 @@ export default function VerifyPage() {
     e.stopPropagation()
   }
 
-  // --- Form Submission (Handles BOTH inputs) ---
+  // --- Form Submission ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     let hashToVerify = '';
 
     if (uploadedImageFile) {
-      // In a real app, you'd hash the image client-side first
-      // const imageHash = await hashImage(uploadedImageFile);
-      // hashToVerify = imageHash;
-
-      // --- MOCK LOGIC ---
-      // For this demo, we'll pretend any uploaded image
-      // has the "correct" hash to pass verification.
-      console.log('Simulating hashing of image:', uploadedImageFile.name)
-      await new Promise(resolve => setTimeout(resolve, 500)) // Simulate hashing time
+      // Mock hashing logic
+      await new Promise(resolve => setTimeout(resolve, 500))
       hashToVerify = '0x' + 'b'.repeat(64)
-      // --- END MOCK LOGIC ---
-      
     } else if (hashInput) {
       hashToVerify = hashInput
     } else {
@@ -144,15 +160,19 @@ export default function VerifyPage() {
       return
     }
 
-    handleVerify(hashToVerify) // Call the verification logic
+    handleVerify(hashToVerify)
   }
 
   return (
-    <div className="flex flex-col items-center w-full min-h-[70vh] pb-20">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="flex flex-col items-center w-full min-h-[70vh] pb-20"
+    >
       {/* --- The Verification Form --- */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        variants={itemVariants}
         className="glass-card w-full max-w-2xl p-6 md:p-8 rounded-2xl"
       >
         <form onSubmit={handleSubmit}>
@@ -173,13 +193,13 @@ export default function VerifyPage() {
             value={hashInput}
             onChange={(e) => {
               setHashInput(e.target.value)
-              if (e.target.value) clearImage() // Clear image if user types hash
+              if (e.target.value) clearImage()
             }}
             placeholder="0x..."
             className="w-full p-4 rounded-lg bg-black/20 text-white font-mono
                        border border-white/20 focus:outline-none 
                        focus:ring-2 focus:ring-blue-400"
-            disabled={isLoading || !!uploadedImageFile} // Disable if image is uploaded
+            disabled={isLoading || !!uploadedImageFile}
           />
 
           <div className="text-center text-slate-400 my-4 text-lg">
@@ -190,9 +210,10 @@ export default function VerifyPage() {
           <label htmlFor="image-upload" className="block text-xl font-semibold text-white mb-3">
             Verify by Image
           </label>
-          <div
+          <motion.div
             onDrop={handleDrop}
             onDragOver={handleDragOver}
+            whileHover={{ scale: 1.02 }}
             className={`
               w-full p-6 md:p-10 rounded-lg border-2 border-dashed
               flex flex-col items-center justify-center cursor-pointer
@@ -226,19 +247,8 @@ export default function VerifyPage() {
               </div>
             ) : (
               <>
-                <svg
-                  className="w-12 h-12 text-slate-400 mb-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 0115.9 6L16 6a3 3 0 013 3v10a2 2 0 01-2 2H7a2 2 0 01-2-2v-1a4 4 0 012-4z"
-                  ></path>
+                <svg className="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 0115.9 6L16 6a3 3 0 013 3v10a2 2 0 01-2 2H7a2 2 0 01-2-2v-1a4 4 0 012-4z"></path>
                 </svg>
                 <p className="text-lg text-slate-300">
                   Drag & Drop image here, or{' '}
@@ -252,9 +262,9 @@ export default function VerifyPage() {
               accept="image/*"
               className="hidden"
               onChange={handleFileChange}
-              disabled={isLoading || !!hashInput} // Disable if hash is entered
+              disabled={isLoading || !!hashInput}
             />
-          </div>
+          </motion.div>
 
           <motion.button
             type="submit"
@@ -275,15 +285,23 @@ export default function VerifyPage() {
       {/* --- The Results --- */}
       <AnimatePresence>
         {isLoading && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div
+            key="loader"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
             <LoadingSpinner size="lg" />
           </motion.div>
         )}
 
         {error && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            key="error"
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             className="glass-card mt-8 w-full max-w-2xl p-6 rounded-2xl border-2 border-red-500/50"
           >
             <h3 className="text-2xl font-bold text-red-400 text-center">
@@ -295,8 +313,11 @@ export default function VerifyPage() {
 
         {result && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            key="result"
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
             className="glass-card mt-8 w-full max-w-2xl p-6 md:p-8 rounded-2xl border-2 border-green-500/50"
           >
             <h3 className="text-2xl font-bold text-green-400 text-center mb-6">
@@ -324,16 +345,16 @@ export default function VerifyPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
 }
 
 // Helper component for displaying details
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-left py-2 border-b border-white/10">
+    <motion.div variants ={itemVariants} className="text-left py-2 border-b border-white/10">
       <p className="text-sm font-medium text-slate-400">{label}</p>
       <p className="text-lg text-white font-mono break-all">{value}</p>
-    </div>
+    </motion.div>
   )
 }

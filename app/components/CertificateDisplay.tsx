@@ -1,54 +1,79 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { QRCode } from 'react-qrcode-logo' // Using this as it's a common drop-in for qrcode.react
-import { format } from 'date-fns' // Comes with Next.js, but let's add `date-fns` if not: npm install date-fns
+import { QRCode } from 'react-qrcode-logo'
+import { format } from 'date-fns'
+// Removed AnimatedGlassCard import
 
 // Define the shape of our proof data
 type ProofData = {
   creatorAddress: string
   timestamp: number
   prompt: string
-  imageHash: string // Hash of the generated image
-  proofHash: string // The combined hash
+  imageHash: string
+  proofHash: string
   txHash: string
   ipfsUrl: string
 }
 
-type Props = {
-  proofData: ProofData
+// Function to copy text to clipboard
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text)
+}
+
+// Truncate wallet addresses
+const truncateAddress = (address: string) =>
+  `${address.slice(0, 6)}...${address.slice(-4)}`
+
+// --- Animation Variants (Still used) ---
+const containerVariants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.5,
+      ease: 'easeOut',
+      staggerChildren: 0.1,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+}
+
+const qrVariants = {
+  hidden: { opacity: 0, scale: 0.5 },
+  visible: { opacity: 1, scale: 1, transition: { type: 'spring', duration: 0.5, delay: 0.2 } },
 }
 
 export default function CertificateDisplay({ proofData }: Props) {
-  // We'll generate a verification URL (even if the page isn't fully working yet)
   const verificationUrl = `${window.location.origin}/verify?hash=${proofData.proofHash}`
-
-  // Function to copy text to clipboard
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    // Add a simple "Copied!" feedback if you like
-  }
-
-  // Truncate wallet addresses
-  const truncateAddress = (address: string) =>
-    `${address.slice(0, 6)}...${address.slice(-4)}`
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
       className="glass-card mt-8 w-full max-w-2xl rounded-2xl p-6 md:p-8"
-      id="certificate" // For printing
+      id="certificate"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
     >
-      <h2 className="text-3xl font-bold text-white text-center mb-6">
+      <motion.h2
+        variants={itemVariants}
+        className="text-3xl font-bold text-white text-center mb-6"
+      >
         Proof-of-Art Certificate
-      </h2>
+      </motion.h2>
 
       <div className="flex flex-col md:flex-row gap-6">
-        {/* Left Side: QR Code and Image */}
-        <div className="flex-shrink-0 flex flex-col items-center gap-4">
-          <div className="bg-white p-2 rounded-lg">
+        {/* Left Side: QR Code */}
+        <motion.div
+          variants={qrVariants}
+          className="flex-shrink-0 flex flex-col items-center gap-4"
+        >
+          <div className="bg-white p-2 rounded-lg shadow-lg">
             <QRCode
               value={verificationUrl}
               size={160}
@@ -57,10 +82,10 @@ export default function CertificateDisplay({ proofData }: Props) {
             />
           </div>
           <p className="text-sm text-slate-300">Scan to Verify</p>
-        </div>
+        </motion.div>
 
         {/* Right Side: Details */}
-        <div className="flex-1 space-y-3">
+        <motion.div className="flex-1 space-y-3">
           <DetailItem
             label="Creator"
             value={truncateAddress(proofData.creatorAddress)}
@@ -68,7 +93,7 @@ export default function CertificateDisplay({ proofData }: Props) {
           />
           <DetailItem
             label="Timestamp"
-            value={format(new Date(proofData.timestamp), 'dd MMM yyyy, HH:mm:ss')}
+            value={format(new Date(proofData.timestamp), 'dd MMM yy, HH:mm:ss')}
           />
           <DetailItem label="Prompt" value={`"${proofData.prompt}"`} />
           <DetailItem
@@ -81,14 +106,15 @@ export default function CertificateDisplay({ proofData }: Props) {
             value={truncateAddress(proofData.txHash)}
             onCopy={() => copyToClipboard(proofData.txHash)}
           />
-        </div>
+        </motion.div>
       </div>
       
       {/* Print Button */}
       <motion.button
+        variants={itemVariants}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => window.print()} // Simple print functionality
+        onClick={() => window.print()}
         className="glass-card mt-8 w-full rounded-xl px-8 py-3
                    text-lg font-semibold text-white
                    transition-all duration-300
@@ -100,7 +126,7 @@ export default function CertificateDisplay({ proofData }: Props) {
   )
 }
 
-// A helper component to keep the list clean
+// A helper component to keep the list clean and animatable
 function DetailItem({
   label,
   value,
@@ -108,10 +134,10 @@ function DetailItem({
 }: {
   label: string
   value: string
-  onCopy?: () => void
+  onCopy?: () => void // <-- THIS IS THE FIX
 }) {
   return (
-    <div className="text-left">
+    <motion.div variants={itemVariants} className="text-left">
       <p className="text-sm font-medium text-slate-400">{label}</p>
       <div className="flex items-center gap-2">
         <p className="text-lg text-white font-mono break-all">{value}</p>
@@ -125,6 +151,6 @@ function DetailItem({
           </button>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
