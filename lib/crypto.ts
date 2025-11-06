@@ -1,22 +1,13 @@
 import crypto from 'crypto';
 
-/**
- * Generate SHA-256 hash of a string
- */
 export function hashString(input: string): string {
   return crypto.createHash('sha256').update(input).digest('hex');
 }
 
-/**
- * Generate SHA-256 hash of a buffer (file)
- */
 export function hashBuffer(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 
-/**
- * Generate combined hash from prompt, output, user, and timestamp
- */
 export function generateCombinedHash(
   promptHash: string,
   outputHash: string,
@@ -27,9 +18,6 @@ export function generateCombinedHash(
   return hashString(combined);
 }
 
-/**
- * Generate proof data structure
- */
 export interface ProofData {
   promptHash: string;
   outputHash: string;
@@ -56,8 +44,3 @@ export function generateProof(
     timestamp,
   };
 }
-
-
-
-
-

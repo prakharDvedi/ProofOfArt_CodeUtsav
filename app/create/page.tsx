@@ -1,15 +1,23 @@
 'use client';
 
-import { useState } from 'react';
-import { useAccount, useSigner } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { useAccount, useWalletClient, useChainId, useSwitchNetwork } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { registerProofOnChain } from '@/lib/blockchain';
+import { BrowserProvider } from 'ethers';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function CreatePage() {
   const { address, isConnected } = useAccount();
-  const { data: signer } = useSigner();
+  const { data: walletClient } = useWalletClient();
+  const chainId = useChainId();
+  const { switchNetwork } = useSwitchNetwork();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -28,7 +36,6 @@ export default function CreatePage() {
     setCertificate(null);
 
     try {
-      // Call API to generate image and create proof
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -41,6 +48,12 @@ export default function CreatePage() {
         }),
       });
 
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`API returned non-JSON response: ${text.substring(0, 200)}`);
+      }
+
       const data = await response.json();
 
       if (!data.success) {
@@ -50,39 +63,75 @@ export default function CreatePage() {
       setGeneratedImage(`data:image/png;base64,${data.proof.outputBuffer}`);
       setProof(data.proof);
 
-      // Register on blockchain
-      if (signer) {
+      let txHash: string | null = null;
+      if (walletClient) {
         try {
-          const txHash = await registerProofOnChain(signer, {
+          if (chainId !== 11155111) {
+            if (switchNetwork) {
+              try {
+                console.log('Attempting to switch to Sepolia network...');
+                switchNetwork(11155111);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                if (chainId !== 11155111) {
+                  throw new Error('Network switch failed. Please switch to Sepolia testnet manually in MetaMask.');
+                }
+              } catch (switchError: any) {
+                throw new Error(`Failed to switch to Sepolia network. Please switch manually in MetaMask:\n\n1. Open MetaMask\n2. Click network dropdown\n3. Select "Sepolia"\n4. Try again`);
+              }
+            } else {
+              throw new Error(`Wrong network! Please switch to Sepolia testnet (Chain ID: 11155111). Current network Chain ID: ${chainId}. Open MetaMask and switch to Sepolia testnet.`);
+            }
+          }
+          
+          const provider = new BrowserProvider(walletClient as any);
+          const signer = await provider.getSigner(address);
+          
+          const network = await provider.getNetwork();
+          console.log('Connected to network:', network.name, 'Chain ID:', network.chainId.toString());
+          
+          if (network.chainId !== 11155111n) {
+            throw new Error(`Network mismatch! Wallet is on Chain ID ${network.chainId}, but contract is on Sepolia (11155111). Please switch to Sepolia testnet in MetaMask and try again.`);
+          }
+          
+          txHash = await registerProofOnChain(signer, {
             promptHash: data.proof.promptHash,
             outputHash: data.proof.outputHash,
             combinedHash: data.proof.combinedHash,
             ipfsLink: data.proof.outputCid,
           });
-
-          // Create certificate
-          const cert = {
-            creator: address,
-            prompt,
-            promptHash: data.proof.promptHash,
-            outputHash: data.proof.outputHash,
-            combinedHash: data.proof.combinedHash,
-            timestamp: new Date(data.proof.timestamp).toISOString(),
-            ipfsLink: data.proof.outputCid,
-            metadataCid: data.proof.metadataCid,
-            txHash,
-            verificationUrl: `${window.location.origin}/verify?hash=${data.proof.combinedHash}`,
-          };
-
-          setCertificate(cert);
         } catch (error: any) {
           console.error('Blockchain registration error:', error);
-          alert(
-            'Image generated but blockchain registration failed: ' +
-              error.message
-          );
+          console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            data: error.data,
+            chainId,
+            contractAddress: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || 'not set',
+            rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || 'not set',
+          });
+          
+          if (error.message?.includes('network') || error.message?.includes('Chain ID') || error.code === 'NETWORK_ERROR') {
+            alert(error.message || 'Please switch to Sepolia testnet in MetaMask:\n1. Open MetaMask\n2. Click network dropdown\n3. Select "Sepolia"\n4. Try again');
+          }
+          
+          console.warn('Blockchain registration failed, continuing without it:', error.message);
         }
       }
+
+      const cert = {
+        creator: address,
+        prompt,
+        promptHash: data.proof.promptHash,
+        outputHash: data.proof.outputHash,
+        combinedHash: data.proof.combinedHash,
+        timestamp: new Date(data.proof.timestamp).toISOString(),
+        ipfsLink: data.proof.outputCid,
+        metadataCid: data.proof.metadataCid,
+        txHash: txHash || 'not-registered',
+        verificationUrl: `${window.location.origin}/verify?hash=${data.proof.combinedHash}`,
+      };
+
+      setCertificate(cert);
     } catch (error: any) {
       console.error('Generation error:', error);
       alert('Failed to generate: ' + error.message);
@@ -113,7 +162,11 @@ export default function CreatePage() {
             Create Verifiable AI Art
           </h1>
 
-          {!isConnected ? (
+          {!mounted ? (
+            <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+              <p className="text-lg text-gray-600">Loading...</p>
+            </div>
+          ) : !isConnected ? (
             <div className="bg-white rounded-xl shadow-lg p-8 text-center">
               <p className="text-lg text-gray-600 mb-4">
                 Connect your wallet to get started
@@ -218,13 +271,16 @@ export default function CreatePage() {
                         IPFS Link
                       </h3>
                       <a
-                        href={`https://ipfs.io/ipfs/${certificate.ipfsLink}`}
+                        href={`https://gateway.pinata.cloud/ipfs/${certificate.ipfsLink}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-xs text-blue-600 hover:underline break-all"
                       >
                         ipfs://{certificate.ipfsLink}
                       </a>
+                      <p className="text-xs text-gray-500 mt-1">
+                        (Using Pinata gateway - faster and more reliable)
+                      </p>
                     </div>
 
                     <div>
@@ -284,4 +340,3 @@ export default function CreatePage() {
     </div>
   );
 }
-

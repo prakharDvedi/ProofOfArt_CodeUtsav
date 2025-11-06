@@ -1,20 +1,22 @@
 import { ethers } from 'ethers';
-// After compilation, use: import ProofOfArtABI from '../artifacts/contracts/ProofOfArt.sol/ProofOfArt.json';
+import ProofOfArtArtifact from '../artifacts/contracts/ProofOfArt.sol/ProofOfArt.json';
 import { ProofOfArtABI } from './contract-abi';
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'http://localhost:8545';
-
-/**
- * Get contract instance
- */
-export function getContract(signerOrProvider: ethers.Signer | ethers.Provider) {
-  return new ethers.Contract(CONTRACT_ADDRESS, ProofOfArtABI.abi, signerOrProvider);
+function getContractAddress(): string {
+  if (typeof window !== 'undefined') {
+    return (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string) || '';
+  }
+  return process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
 }
 
-/**
- * Register proof on blockchain
- */
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || 'http://localhost:8545';
+
+export function getContract(signerOrProvider: ethers.Signer | ethers.Provider) {
+  const contractAddress = getContractAddress();
+  const abi = (ProofOfArtArtifact as any).abi || ProofOfArtABI;
+  return new ethers.Contract(contractAddress, abi, signerOrProvider);
+}
+
 export async function registerProofOnChain(
   signer: ethers.Signer,
   proofData: {
@@ -25,7 +27,19 @@ export async function registerProofOnChain(
   }
 ): Promise<string> {
   try {
+    const contractAddress = getContractAddress();
+    
+    if (!contractAddress || contractAddress === '') {
+      throw new Error('Contract address not set. Please deploy the contract and set NEXT_PUBLIC_CONTRACT_ADDRESS in your .env.local file.');
+    }
+
     const contract = getContract(signer);
+    
+    const code = await signer.provider.getCode(contractAddress);
+    if (code === '0x') {
+      throw new Error(`No contract found at address ${contractAddress}. Please deploy the contract first.`);
+    }
+
     const tx = await contract.registerProof(
       proofData.promptHash,
       proofData.outputHash,
@@ -35,15 +49,29 @@ export async function registerProofOnChain(
 
     const receipt = await tx.wait();
     return receipt.hash;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Blockchain registration error:', error);
-    throw new Error('Failed to register proof on blockchain');
+    
+    if (error.message) {
+      throw new Error(`Failed to register proof on blockchain: ${error.message}`);
+    }
+    
+    if (error.code === 'CALL_EXCEPTION') {
+      throw new Error('Contract call failed. Make sure the contract is deployed and the address is correct.');
+    }
+    
+    if (error.code === 'INSUFFICIENT_FUNDS') {
+      throw new Error('Insufficient funds for transaction. Please add more ETH to your wallet.');
+    }
+    
+    if (error.code === 'ACTION_REJECTED') {
+      throw new Error('Transaction rejected by user.');
+    }
+    
+    throw new Error(`Failed to register proof on blockchain: ${error.message || 'Unknown error'}`);
   }
 }
 
-/**
- * Verify proof on blockchain
- */
 export async function verifyProofOnChain(
   provider: ethers.Provider,
   combinedHash: string
@@ -69,10 +97,6 @@ export async function verifyProofOnChain(
   }
 }
 
-/**
- * Get provider for read-only operations
- */
 export function getProvider(): ethers.JsonRpcProvider {
   return new ethers.JsonRpcProvider(RPC_URL);
 }
-

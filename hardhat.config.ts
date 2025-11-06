@@ -26,6 +26,10 @@ const config: HardhatUserConfig = {
       url: process.env.POLYGON_RPC_URL || "https://rpc.ankr.com/polygon",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
+    mumbai: {
+      url: process.env.MUMBAI_RPC_URL || "https://rpc.ankr.com/polygon_mumbai",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
   },
   paths: {
     sources: "./contracts",
@@ -36,6 +40,3 @@ const config: HardhatUserConfig = {
 };
 
 export default config;
-
-
-

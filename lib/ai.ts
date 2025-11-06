@@ -6,15 +6,25 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
 
-// Initialize Gemini for text generation
 const genAI = process.env.GEMINI_API_KEY 
   ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   : null;
 
-/**
- * Generate image using DALL-E
- */
 export async function generateImage(prompt: string): Promise<Buffer> {
+  if (process.env.STABILITY_API_KEY) {
+    try {
+      return await generateImageStability(prompt);
+    } catch (error) {
+      console.error('Stability AI failed, trying OpenAI...', error);
+    }
+  }
+
+  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'sk-your-key-here') {
+    throw new Error(
+      'No image generation API key found. Please set either STABILITY_API_KEY or OPENAI_API_KEY in your .env file.'
+    );
+  }
+
   try {
     const response = await openai.images.generate({
       model: 'dall-e-3',
@@ -29,7 +39,6 @@ export async function generateImage(prompt: string): Promise<Buffer> {
       throw new Error('No image URL returned');
     }
 
-    // Download image
     const imageResponse = await axios.get(imageUrl, {
       responseType: 'arraybuffer',
     });
@@ -41,11 +50,7 @@ export async function generateImage(prompt: string): Promise<Buffer> {
   }
 }
 
-/**
- * Generate text using GPT or Gemini (if GEMINI_API_KEY is set)
- */
 export async function generateText(prompt: string): Promise<string> {
-  // Use Gemini if API key is available, otherwise fall back to GPT
   if (genAI) {
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
@@ -54,14 +59,12 @@ export async function generateText(prompt: string): Promise<string> {
       return response.text();
     } catch (error) {
       console.error('Gemini text generation error:', error);
-      // Fall back to GPT if Gemini fails
       if (!process.env.OPENAI_API_KEY) {
         throw new Error('Failed to generate text with Gemini');
       }
     }
   }
 
-  // Fall back to GPT-4
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-4',
@@ -81,9 +84,6 @@ export async function generateText(prompt: string): Promise<string> {
   }
 }
 
-/**
- * Alternative: Generate image using Stability AI
- */
 export async function generateImageStability(prompt: string): Promise<Buffer> {
   try {
     const response = await axios.post(
@@ -102,24 +102,24 @@ export async function generateImageStability(prompt: string): Promise<Buffer> {
           Accept: 'application/json',
           Authorization: `Bearer ${process.env.STABILITY_API_KEY}`,
         },
-        responseType: 'arraybuffer',
+        responseType: 'json',
       }
     );
 
-    const data = JSON.parse(Buffer.from(response.data).toString());
-    const imageUrl = data.artifacts[0].base64;
-
-    if (!imageUrl) {
-      throw new Error('No image returned');
+    const data = response.data;
+    
+    if (!data.artifacts || !data.artifacts[0] || !data.artifacts[0].base64) {
+      throw new Error('No image returned from Stability AI');
     }
 
-    return Buffer.from(imageUrl, 'base64');
-  } catch (error) {
+    const base64Image = data.artifacts[0].base64;
+    return Buffer.from(base64Image, 'base64');
+  } catch (error: any) {
     console.error('Stability AI generation error:', error);
-    throw new Error('Failed to generate image with Stability AI');
+    if (error.response) {
+      console.error('Stability AI response:', error.response.data);
+      throw new Error(`Stability AI error: ${error.response.data?.message || error.message}`);
+    }
+    throw new Error(`Failed to generate image with Stability AI: ${error.message}`);
   }
 }
-
-
-
-

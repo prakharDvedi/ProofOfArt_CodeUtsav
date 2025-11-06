@@ -20,7 +20,6 @@ export default function Home() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Hero Section */}
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
             Verifiable Generative AI Framework
@@ -46,7 +45,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Features */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
             <div className="text-4xl mb-4">🔐</div>
@@ -82,7 +80,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* How It Works */}
         <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100">
           <h2 className="text-3xl font-bold text-center mb-8">
             How It Works
@@ -139,8 +136,3 @@ export default function Home() {
     </div>
   );
 }
-
-
-
-
-

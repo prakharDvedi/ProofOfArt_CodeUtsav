@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/**
- * @title ProofOfArt
- * @dev Smart contract for storing verifiable proof of AI-generated artwork
- * Links creator, prompt, output, and timestamp on blockchain
- */
 contract ProofOfArt {
     struct ArtProof {
         address creator;
@@ -17,13 +12,8 @@ contract ProofOfArt {
         bool exists;
     }
 
-    // Mapping from combined hash to proof
     mapping(string => ArtProof) public proofs;
-    
-    // Mapping from creator address to their proof hashes
     mapping(address => string[]) public creatorProofs;
-    
-    // Array of all proof hashes
     string[] public allProofHashes;
 
     event ProofRegistered(
@@ -35,13 +25,6 @@ contract ProofOfArt {
         string ipfsLink
     );
 
-    /**
-     * @dev Register a new proof of art
-     * @param _promptHash SHA-256 hash of the prompt
-     * @param _outputHash SHA-256 hash of the generated output
-     * @param _combinedHash SHA-256 hash of (prompt + output + user + timestamp)
-     * @param _ipfsLink IPFS CID for storing the actual files
-     */
     function registerProof(
         string memory _promptHash,
         string memory _outputHash,
@@ -75,13 +58,6 @@ contract ProofOfArt {
         );
     }
 
-    /**
-     * @dev Verify if a proof exists
-     * @param _combinedHash The combined hash to verify
-     * @return exists Whether the proof exists
-     * @return creator The creator's address
-     * @return timestamp The timestamp of creation
-     */
     function verifyProof(string memory _combinedHash)
         public
         view
@@ -101,11 +77,6 @@ contract ProofOfArt {
         );
     }
 
-    /**
-     * @dev Get all proofs created by an address
-     * @param _creator The creator's address
-     * @return Array of combined hashes
-     */
     function getCreatorProofs(address _creator)
         public
         view
@@ -114,19 +85,10 @@ contract ProofOfArt {
         return creatorProofs[_creator];
     }
 
-    /**
-     * @dev Get total number of proofs registered
-     * @return Total count
-     */
     function getTotalProofs() public view returns (uint256) {
         return allProofHashes.length;
     }
 
-    /**
-     * @dev Get proof details
-     * @param _combinedHash The combined hash
-     * @return Full proof struct
-     */
     function getProof(string memory _combinedHash)
         public
         view
@@ -136,8 +98,3 @@ contract ProofOfArt {
         return proofs[_combinedHash];
     }
 }
-
-
-
-
-

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyProofOnChain, getProvider } from '@/lib/blockchain';
-import { hashBuffer, generateCombinedHash, hashString } from '@/lib/crypto';
+import { hashBuffer } from '@/lib/crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
     const provider = getProvider();
 
     if (combinedHash) {
-      // Direct hash verification
       const result = await verifyProofOnChain(provider, combinedHash);
       return NextResponse.json({
         success: true,
@@ -26,12 +25,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (file) {
-      // File-based verification
       const fileBuffer = Buffer.from(file, 'base64');
       const outputHash = hashBuffer(fileBuffer);
       
-      // Note: This is a simplified approach. In production, you'd need to
-      // match against stored proofs or use a mapping service
       return NextResponse.json({
         success: true,
         outputHash,
@@ -51,8 +47,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-
-
-
-

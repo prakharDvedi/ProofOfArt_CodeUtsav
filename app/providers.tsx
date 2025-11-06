@@ -3,12 +3,27 @@
 import '@rainbow-me/rainbowkit/styles.css';
 import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { configureChains, createConfig, WagmiConfig } from 'wagmi';
-import { mainnet, sepolia, polygon } from 'wagmi/chains';
+import { mainnet, sepolia, polygon, polygonMumbai } from 'wagmi/chains';
 import { publicProvider } from 'wagmi/providers/public';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+const sepoliaRpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.sepolia.org';
+
+const customSepolia = {
+  ...sepolia,
+  rpcUrls: {
+    ...sepolia.rpcUrls,
+    default: {
+      http: [sepoliaRpcUrl],
+    },
+    public: {
+      http: [sepoliaRpcUrl],
+    },
+  },
+};
+
 const { chains, publicClient } = configureChains(
-  [sepolia, polygon, mainnet],
+  [customSepolia, polygonMumbai, polygon, mainnet],
   [publicProvider()]
 );
 
@@ -35,4 +50,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </WagmiConfig>
   );
 }
-

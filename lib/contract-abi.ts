@@ -1,8 +1,3 @@
-// ProofOfArt Contract ABI
-// This will be generated automatically when you compile the contract
-// For now, this is a manual export. After compilation, use:
-// import ProofOfArtABI from '../artifacts/contracts/ProofOfArt.sol/ProofOfArt.json';
-
 export const ProofOfArtABI = [
   {
     inputs: [
@@ -44,8 +39,3 @@ export const ProofOfArtABI = [
     type: 'function',
   },
 ] as const;
-
-
-
-
-

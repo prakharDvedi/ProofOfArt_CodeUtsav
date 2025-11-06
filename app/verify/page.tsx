@@ -155,13 +155,16 @@ function VerifyContent() {
               <div>
                 <h3 className="font-semibold text-gray-700 mb-2">IPFS Link</h3>
                 <a
-                  href={`https://ipfs.io/ipfs/${verificationResult.ipfsLink}`}
+                  href={`https://gateway.pinata.cloud/ipfs/${verificationResult.ipfsLink}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline text-sm break-all"
                 >
                   ipfs://{verificationResult.ipfsLink}
                 </a>
+                <p className="text-xs text-gray-500 mt-1">
+                  (Using Pinata gateway - faster and more reliable)
+                </p>
               </div>
 
               <div className="bg-blue-50 p-4 rounded-lg">
@@ -211,4 +214,3 @@ export default function VerifyPage() {
     </Suspense>
   );
 }
-
